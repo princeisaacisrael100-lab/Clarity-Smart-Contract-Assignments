@@ -14,7 +14,7 @@ This contract allows users to list, buy, and manage NFT sales in a decentralized
 - Buyers are responsible for sending correct STX when buying (simplified in contract).
 - NFT ownership is verified via the trait before transfers.
 
-## Design Decisions and Tradeoffs
+## Design Decisions and Tradeoffs    
 
 ### Decision 1: Marketplace Fee Calculation
 - **What I chose:** Store fee in basis points and calculate dynamically on purchase.
