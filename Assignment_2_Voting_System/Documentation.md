@@ -2,7 +2,7 @@
 
 ## Student Information
 - Name: Prince Isaac
-- Date: 2025-12-29
+- Date: 2025-12-30
 
 ## Contract Overview
 This contract allows users to create proposals and vote. Each user may vote only once per proposal. Voting periods are enforced via an `end-height` provided when creating the proposal. The contract prevents double-voting and maintains vote tallies.

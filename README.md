@@ -56,7 +56,7 @@ clarity-smart-contract-assignments/
    
    **Student Name:** Prince Isaac
    **Cohort:** 1
-   **Submission Date:** 29-122025
+   **Submission Date:** 2025-12-30
    
    ## Progress Tracker
    - [x] Assignment 1: Hello World Registry
