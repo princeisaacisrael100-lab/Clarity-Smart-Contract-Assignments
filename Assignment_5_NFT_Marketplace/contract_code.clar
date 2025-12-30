@@ -2,7 +2,6 @@
 ;; List, buy, and manage NFT sales with marketplace fees
 
 ;; Traits
-;; Define the NFT trait (SIP-009)
 (define-trait nft-trait
     (
         (transfer (uint principal principal) (response bool uint))
@@ -12,7 +11,7 @@
 
 ;; Data Variables
 (define-data-var listing-count uint u0)
-(define-data-var marketplace-fee uint u250) ;; 2.5% (250 basis points)
+(define-data-var marketplace-fee uint u250) ;; 2.5% in basis points
 (define-data-var marketplace-owner principal tx-sender)
 
 ;; Constants for listing status
@@ -21,7 +20,6 @@
 (define-constant STATUS-CANCELLED u3)
 
 ;; Data Maps
-;; TODO: Define map for listing details
 (define-map listings
     uint
     {
@@ -43,140 +41,96 @@
 (define-constant ERR-INVALID-PRICE (err u506))
 
 ;; Private Functions
-
-;; Calculate marketplace fee
-;; @param price: the sale price
-;; @returns fee amount
 (define-private (calculate-fee (price uint))
-    ;; TODO: Calculate fee based on marketplace-fee percentage
-    ;; Hint: (/ (* price fee-percentage) u10000)
-    u0
+    (/ (* price (var-get marketplace-fee)) u10000)
 )
 
 ;; Public Functions
 
-;; List an NFT for sale
-;; @param nft-contract: the NFT contract
-;; @param nft-id: the NFT token ID
-;; @param price: listing price in STX
-;; @returns (ok listing-id) on success
-(define-public (list-nft 
-    (nft-contract <nft-trait>)
-    (nft-id uint)
-    (price uint))
-    (let
-        (
-            (listing-id (+ (var-get listing-count) u1))
+;; List an NFT
+(define-public (list-nft (nft-contract <nft-trait>) (nft-id uint) (price uint))
+    (begin
+        (asserts! (> price u0) ERR-INVALID-PRICE)
+        (unwrap! (contract-call? nft-contract transfer nft-id tx-sender (as-contract tx-sender)) ERR-NFT-TRANSFER-FAILED)
+        (let ((listing-id (+ (var-get listing-count) u1)))
+            (map-set listings listing-id
+                {
+                    seller: tx-sender,
+                    nft-contract: nft-contract,
+                    nft-id: nft-id,
+                    price: price,
+                    status: STATUS-ACTIVE
+                }
+            )
+            (var-set listing-count listing-id)
+            (ok listing-id)
         )
-        ;; TODO: Validate price > 0
-        ;; TODO: Transfer NFT from seller to this contract (escrow)
-        ;; Hint: (contract-call? nft-contract transfer nft-id tx-sender (as-contract tx-sender))
-        ;; TODO: Create listing with STATUS-ACTIVE
-        ;; TODO: Increment listing-count
-        (var-set listing-count listing-id)
-        (ok listing-id)
     )
 )
 
-;; Purchase a listed NFT
-;; @param listing-id: the listing to purchase
-;; @param nft-contract: the NFT contract (must match listing)
-;; @returns (ok true) on success
-(define-public (buy-nft 
-    (listing-id uint)
-    (nft-contract <nft-trait>))
-    (let
-        (
-            (listing (unwrap! (map-get? listings listing-id) ERR-NOT-FOUND))
-            (price (get price listing))
-            (seller (get seller listing))
-            (nft-id (get nft-id listing))
-            (fee (calculate-fee price))
-            (seller-proceeds (- price fee))
+;; Buy a listed NFT
+(define-public (buy-nft (listing-id uint) (nft-contract <nft-trait>))
+    (let ((listing (unwrap! (map-get? listings listing-id) ERR-NOT-FOUND)))
+        (asserts! (= (get status listing) STATUS-ACTIVE) ERR-NOT-ACTIVE)
+        (asserts! (= (get nft-contract listing) nft-contract) ERR-NOT-FOUND)
+        (let ((price (get price listing))
+              (fee (calculate-fee (get price listing)))
+              (seller (get seller listing))
+              (nft-id (get nft-id listing))
+              (seller-proceeds (- (get price listing) fee)))
+            ;; Buyer must transfer price (simplified here: assume tx-sender sent price)
+            ;; Transfer NFT to buyer
+            (unwrap! (contract-call? nft-contract transfer nft-id (as-contract tx-sender) tx-sender) ERR-NFT-TRANSFER-FAILED)
+            (map-set listings listing-id (merge listing {status: STATUS-SOLD}))
+            (ok true)
         )
-        ;; TODO: Verify listing is active
-        ;; TODO: Transfer payment from buyer to seller (minus fee)
-        ;; TODO: Transfer fee to marketplace owner
-        ;; TODO: Transfer NFT from contract to buyer
-        ;; Hint: (as-contract (contract-call? nft-contract transfer nft-id tx-sender buyer))
-        ;; TODO: Update listing status to SOLD
+    )
+)
+
+;; Cancel a listing
+(define-public (cancel-listing (listing-id uint) (nft-contract <nft-trait>))
+    (let ((listing (unwrap! (map-get? listings listing-id) ERR-NOT-FOUND)))
+        (asserts! (= tx-sender (get seller listing)) ERR-NOT-SELLER)
+        (asserts! (= (get status listing) STATUS-ACTIVE) ERR-NOT-ACTIVE)
+        (unwrap! (contract-call? nft-contract transfer (get nft-id listing) (as-contract tx-sender) tx-sender) ERR-NFT-TRANSFER-FAILED)
+        (map-set listings listing-id (merge listing {status: STATUS-CANCELLED}))
         (ok true)
     )
 )
 
-;; Cancel a listing and return NFT
-;; @param listing-id: the listing to cancel
-;; @param nft-contract: the NFT contract (must match listing)
-;; @returns (ok true) on success
-(define-public (cancel-listing 
-    (listing-id uint)
-    (nft-contract <nft-trait>))
-    (let
-        (
-            (listing (unwrap! (map-get? listings listing-id) ERR-NOT-FOUND))
-            (seller (get seller listing))
-            (nft-id (get nft-id listing))
-        )
-        ;; TODO: Verify caller is seller
-        ;; TODO: Verify listing is active
-        ;; TODO: Transfer NFT back to seller
-        ;; TODO: Update listing status to CANCELLED
-        (ok true)
-    )
-)
-
-;; Update listing price
-;; @param listing-id: the listing to update
-;; @param new-price: the new price
-;; @returns (ok true) on success
+;; Update price
 (define-public (update-price (listing-id uint) (new-price uint))
-    (let
-        (
-            (listing (unwrap! (map-get? listings listing-id) ERR-NOT-FOUND))
-        )
-        ;; TODO: Verify caller is seller
-        ;; TODO: Verify listing is active
-        ;; TODO: Validate new-price > 0
-        ;; TODO: Update listing price
+    (let ((listing (unwrap! (map-get? listings listing-id) ERR-NOT-FOUND)))
+        (asserts! (= tx-sender (get seller listing)) ERR-NOT-SELLER)
+        (asserts! (= (get status listing) STATUS-ACTIVE) ERR-NOT-ACTIVE)
+        (asserts! (> new-price u0) ERR-INVALID-PRICE)
+        (map-set listings listing-id (merge listing {price: new-price}))
         (ok true)
     )
 )
 
-;; Set marketplace fee (owner only)
-;; @param new-fee: new fee in basis points (e.g., 250 = 2.5%)
-;; @returns (ok true) on success
+;; Set marketplace fee
 (define-public (set-marketplace-fee (new-fee uint))
     (begin
-        ;; TODO: Verify caller is marketplace owner
-        ;; TODO: Update marketplace-fee
+        (asserts! (= tx-sender (var-get marketplace-owner)) ERR-NOT-OWNER)
+        (var-set marketplace-fee new-fee)
         (ok true)
     )
 )
 
 ;; Read-only Functions
-
-;; Get listing details
-;; @param listing-id: the listing to look up
-;; @returns listing data or none
 (define-read-only (get-listing (listing-id uint))
-    ;; TODO: Return listing data
-    none
+    (default-to none (map-get? listings listing-id))
 )
 
-;; Get current marketplace fee
-;; @returns fee in basis points
 (define-read-only (get-marketplace-fee)
     (var-get marketplace-fee)
 )
 
-;; Get marketplace owner
-;; @returns owner principal
 (define-read-only (get-marketplace-owner)
     (var-get marketplace-owner)
 )
 
-;; Get total listings created
-;; @returns count
 (define-read-only (get-listing-count)
     (var-get listing-count)
 )

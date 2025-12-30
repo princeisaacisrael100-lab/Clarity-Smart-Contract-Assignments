@@ -1,55 +1,45 @@
-# Assignment [Number]: [Contract Name]
+# Assignment 2: Simple Voting System
 
 ## Student Information
-- Name: [Your Name]
-- Date: [Submission Date]
+- Name: Prince Isaac
+- Date: 2025-12-29
 
 ## Contract Overview
-[Brief description of what your contract does]
+This contract allows users to create proposals and vote. Each user may vote only once per proposal. Voting periods are enforced via an `end-height` provided when creating the proposal. The contract prevents double-voting and maintains vote tallies.
 
 ## Assumptions Made
-- [List any assumptions about how the contract should work]
-- [Example: "Assumed that once a message is deleted, it cannot be recovered"]
-- [Example: "Assumed prices are always in micro-STX (1 STX = 1,000,000 micro-STX)"]
+- Proposal titles max 100 characters; descriptions max 500 characters.
+- Voting duration is defined by `end-height` supplied by the creator.
+- Votes cannot be changed or deleted.
+- Each user can vote once per proposal.
+- Anyone can read proposals, vote counts, and check voting status.
 
 ## Design Decisions and Tradeoffs
 
-### Decision 1: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 1: Caller-supplied block heights
+- **What I chose:** Require caller to provide `current-height` when voting and `end-height` when creating proposals.
+- **Why:** Avoids unresolved `block-height` issues in Hiro Play, fully deployable.
+- **Tradeoff:** Users must track the current block themselves.
 
-### Decision 2: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 2: Composite key for votes
+- **What I chose:** Use `{proposal-id, voter}` as the map key.
+- **Why:** Prevents double-voting efficiently.
+- **Tradeoff:** Slightly more storage per vote.
 
-[Add more as needed]
+### Decision 3: Optional type handling via `match`
+- **What I chose:** All read-only functions handle optional return values using `match`.
+- **Why:** Ensures type safety on Hiro Epoch 3.2.
+- **Tradeoff:** Slightly more verbose syntax, but fully safe.
 
 ## How to Use This Contract
 
-### Function: function-name
-- **Purpose:** [What it does]
+### Function: create-proposal
+- **Purpose:** Create a new proposal.
 - **Parameters:** 
-  - `param1`: [description]
-  - `param2`: [description]
-- **Returns:** [What it returns]
+  - `title`: Proposal title
+  - `description`: Proposal description
+  - `end-height`: Block height when voting ends
+- **Returns:** `(ok proposal-id)`
 - **Example:**
 ```clarity
-  (contract-call? .contract-name function-name param1 param2)
-```
-
-[Document all public functions]
-
-## Known Limitations
-- [List any known issues or limitations]
-- [Example: "Does not handle the case where..."]
-- [Example: "Maximum message length is limited to 500 characters"]
-
-## Future Improvements
-- [Optional: List potential enhancements]
-- [Example: "Could add batch operations for efficiency"]
-
-## Testing Notes
-- [Describe how you tested the contract]
-- [List key test cases you verified]
+(contract-call? .contract-name create-proposal "New Policy" "Should we adopt it?" u1050)

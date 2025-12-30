@@ -1,56 +1,45 @@
-# Assignment [Number]: [Contract Name]
+# Assignment 3: Time-locked Wallet
 
 ## Student Information
-- Name: [Your Name]
-- Date: [Submission Date]
-- Contract Address: [Address]
+- Name: Prince Isaac
+- Date: 2025-12-29
+- Contract Address: tx sender
 
 ## Contract Overview
-[Brief description of what your contract does]
+This contract allows users to deposit STX tokens with a lock period specified in blocks. Users can withdraw their funds only after the unlock height is reached. The contract also allows extending the lock period and tracks the total STX locked.
 
 ## Assumptions Made
-- [List any assumptions about how the contract should work]
-- [Example: "Assumed that once a message is deleted, it cannot be recovered"]
-- [Example: "Assumed prices are always in micro-STX (1 STX = 1,000,000 micro-STX)"]
+- Amounts are in micro-STX (1 STX = 1,000,000 micro-STX).  
+- Users cannot withdraw partially; withdrawals are all-or-nothing.  
+- Unlock heights are strictly enforced; funds cannot be accessed early.  
+- Users may extend but not shorten their lock period.  
+- Total locked STX is updated correctly on deposits and withdrawals.  
 
 ## Design Decisions and Tradeoffs
 
-### Decision 1: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 1: Separate maps for balances and unlock heights
+- **What I chose:** Use `balances` and `unlock-heights` maps keyed by principal.  
+- **Why:** Simplifies access to each user's locked amount and unlock height.  
+- **Tradeoff:** Slightly higher storage cost per user but simplifies logic and safety.
 
-### Decision 2: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 2: Use `block-height` from Clarity environment
+- **What I chose:** Use Clarity’s `block-height` to calculate unlocks and validate withdrawals.  
+- **Why:** Ensures predictable timing based on blockchain state.  
+- **Tradeoff:** Users must be aware of current block height to plan withdrawals.
 
-[Add more as needed]
+### Decision 3: Validations for deposits and withdrawals
+- **What I chose:** Require deposit amounts > 0 and enforce unlock height before withdrawals.  
+- **Why:** Prevents errors, zero-value transactions, and early withdrawals.  
+- **Tradeoff:** Slightly more code per transaction but ensures contract safety.
 
 ## How to Use This Contract
 
-### Function: function-name
-- **Purpose:** [What it does]
+### Function: deposit
+- **Purpose:** Deposit STX with a lock period.  
 - **Parameters:** 
-  - `param1`: [description]
-  - `param2`: [description]
-- **Returns:** [What it returns]
+  - `amount`: Amount of STX in micro-STX  
+  - `lock-blocks`: Number of blocks to lock funds  
+- **Returns:** `(ok true)` on success  
 - **Example:**
 ```clarity
-  (contract-call? .contract-name function-name param1 param2)
-```
-
-[Document all public functions]
-
-## Known Limitations
-- [List any known issues or limitations]
-- [Example: "Does not handle the case where..."]
-- [Example: "Maximum message length is limited to 500 characters"]
-
-## Future Improvements
-- [Optional: List potential enhancements]
-- [Example: "Could add batch operations for efficiency"]
-
-## Testing Notes
-- [Describe how you tested the contract]
-- [List key test cases you verified]
+(contract-call? .time-lock-wallet deposit u1000000 u50)

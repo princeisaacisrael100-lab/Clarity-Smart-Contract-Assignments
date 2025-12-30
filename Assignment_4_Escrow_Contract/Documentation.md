@@ -1,55 +1,85 @@
-# Assignment [Number]: [Contract Name]
+# Assignment 4: Simple Escrow Contract
 
 ## Student Information
-- Name: [Your Name]
-- Date: [Submission Date]
+- Name: Prince Isaac
+- Date: 2025-12-29
 
 ## Contract Overview
-[Brief description of what your contract does]
+
+This contract implements a two-party escrow system. A buyer deposits STX for a specific seller. Funds are securely held until the buyer either releases them to the seller or requests a refund. Escrow states prevent unauthorized access and double-spending.
 
 ## Assumptions Made
-- [List any assumptions about how the contract should work]
-- [Example: "Assumed that once a message is deleted, it cannot be recovered"]
-- [Example: "Assumed prices are always in micro-STX (1 STX = 1,000,000 micro-STX)"]
+
+- Only the buyer can release or refund the escrowed funds.
+- Escrows are all-or-nothing; partial withdrawals are not supported.
+- Escrow IDs are tracked externally by users.
+- STX transfers always succeed when called correctly.
+- No automatic expiry or dispute resolution; buyer must manually act.
 
 ## Design Decisions and Tradeoffs
 
-### Decision 1: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 1: Buyer-only authorization
+- **What I chose:** Only the buyer can release or refund escrow.
+- **Why:** Ensures that sellers cannot prematurely withdraw funds.
+- **Tradeoff:** Seller cannot act if buyer becomes unresponsive; requires trust in the buyer to finalize transactions.
 
-### Decision 2: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 2: Escrow state machine
+- **What I chose:** Escrows have three states: pending, completed, refunded.
+- **Why:** Prevents double-spending and enforces correct workflow.
+- **Tradeoff:** Slightly more complex logic, but increases safety and clarity.
 
-[Add more as needed]
+### Decision 3: Incremental escrow IDs
+- **What I chose:** Each new escrow gets a sequential ID stored in `escrow-count`.
+- **Why:** Provides a simple, collision-free way to reference escrows.
+- **Tradeoff:** Users must track escrow IDs; cannot rely on automatic lookup by parties.
 
 ## How to Use This Contract
 
-### Function: function-name
-- **Purpose:** [What it does]
+### Function: create-escrow
+- **Purpose:** Buyer creates a new escrow and deposits STX.
 - **Parameters:** 
-  - `param1`: [description]
-  - `param2`: [description]
-- **Returns:** [What it returns]
+  - `seller`: Seller's principal
+  - `amount`: Amount of STX to deposit
+- **Returns:** `(ok escrow-id)`
 - **Example:**
 ```clarity
-  (contract-call? .contract-name function-name param1 param2)
-```
+(contract-call? .contract-code create-escrow 'ST1PQ... 'u1000)
 
-[Document all public functions]
+##Known Limitations
 
-## Known Limitations
-- [List any known issues or limitations]
-- [Example: "Does not handle the case where..."]
-- [Example: "Maximum message length is limited to 500 characters"]
+-Only buyers can act on an escrow; sellers cannot force release.
 
-## Future Improvements
-- [Optional: List potential enhancements]
-- [Example: "Could add batch operations for efficiency"]
+-Escrows are all-or-nothing; no partial withdrawals.
 
-## Testing Notes
-- [Describe how you tested the contract]
-- [List key test cases you verified]
+-Contract does not support multi-sig or arbitration.
+
+-Escrow IDs must be tracked by users; incorrect IDs will fail.
+
+-No built-in service fee or commission mechanism.
+
+-Cannot recover STX attached to incorrect escrow ID.
+
+-No automatic expiry; inactive escrows require manual action by buyer.
+
+
+##Future Improvements
+
+-Introduce partial withdrawals.
+
+-Add service fees or commissions.
+
+-Multi-party approval or dispute resolution.
+
+-Automatic expiry or forced refunds for inactive escrows.
+
+##Testing Notes
+
+-Created multiple escrows successfully between different buyers and sellers.
+
+-Verified that only the buyer can release or refund funds.
+
+-Tested double release/refund prevention.
+
+-Checked get-escrow and get-escrow-count return correct values.
+
+-Attempted invalid operations (wrong caller, wrong escrow ID) to confirm errors are thrown.

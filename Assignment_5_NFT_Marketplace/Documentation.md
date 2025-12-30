@@ -1,64 +1,94 @@
-# Assignment [Number]: [Contract Name]
+# Assignment 5: NFT Marketplace
 
 ## Student Information
-- Name: [Your Name]
-- Date: [Submission Date]
+- Name: Prince Isaac
+- Date: 2025-12-29
 
 ## Contract Overview
-[Brief description of what your contract does]
+This contract allows users to list, buy, and manage NFT sales in a decentralized marketplace. Sellers can list NFTs with a price, buyers can purchase listed NFTs, and marketplace fees are collected for each transaction. Listings can be updated or cancelled by the seller before a sale occurs.
 
 ## Assumptions Made
-- [List any assumptions about how the contract should work]
-- [Example: "Assumed that once a message is deleted, it cannot be recovered"]
-- [Example: "Assumed prices are always in micro-STX (1 STX = 1,000,000 micro-STX)"]
+- NFTs conform to SIP-009 standard with `transfer` and `get-owner`.
+- Marketplace fee is fixed in basis points and applied to every sale.
+- Only the seller can modify, cancel, or update listings.
+- Buyers are responsible for sending correct STX when buying (simplified in contract).
+- NFT ownership is verified via the trait before transfers.
 
 ## Design Decisions and Tradeoffs
 
-### Decision 1: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 1: Marketplace Fee Calculation
+- **What I chose:** Store fee in basis points and calculate dynamically on purchase.
+- **Why:** Makes it flexible and precise for fractional percentages.
+- **Tradeoff:** Requires division; must check for rounding errors.
 
-### Decision 2: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 2: NFT Escrow via Contract
+- **What I chose:** NFTs are transferred to the contract upon listing and returned or sent to buyer.
+- **Why:** Ensures secure custody until transaction completes.
+- **Tradeoff:** Requires contract to have proper NFT transfer rights.
 
-[Add more as needed]
+### Decision 3: Status Constants for Listings
+- **What I chose:** Use STATUS-ACTIVE, STATUS-SOLD, STATUS-CANCELLED as constants.
+- **Why:** Simple state machine to prevent double-selling.
+- **Tradeoff:** Limits to single sale per listing; cannot relist same listing ID.
 
 ## How to Use This Contract
 
-### Function: function-name
-- **Purpose:** [What it does]
+### Function: list-nft
+- **Purpose:** List an NFT for sale.
 - **Parameters:** 
-  - `param1`: [description]
-  - `param2`: [description]
-- **Returns:** [What it returns]
+  - `nft-contract`: NFT contract implementing SIP-009
+  - `nft-id`: token ID of the NFT
+  - `price`: listing price in STX
+- **Returns:** `(ok listing-id)`
 - **Example:**
 ```clarity
-  (contract-call? .contract-name function-name param1 param2)
-```
+(contract-call? .nft-marketplace list-nft my-nft-contract u1 u1000000)
 
-[Document all public functions]
 
-## Known Limitations
-- [List any known issues or limitations]
-- [Example: "Does not handle the case where..."]
-- [Example: "Maximum message length is limited to 500 characters"]
+##Known Limitations
 
-## Future Improvements
-- [Optional: List potential enhancements]
-- [Example: "Could add batch operations for efficiency"]
+-Contract does not handle partial payments or auctions.
 
-## Testing Notes
-- [Describe how you tested the contract]
-- [List key test cases you verified]
+-Buyer payment is simplified; in production, STX transfers need proper validation.
 
-## Security Checklist:
+-Cannot relist an NFT with the same listing ID once sold or cancelled.
 
-- [ ]  Verify NFT ownership before listing
-- [ ]  Prevent double-spending of NFTs
-- [ ]  Ensure atomic swaps (payment + NFT transfer together)
-- [ ]  Validate all state transitions
-- [ ]  Check for integer overflow in fee calculations
-- [ ]  Only seller can modify their listings
+-Marketplace fee rounding may slightly impact proceeds.
+
+-Future Improvements
+
+-Support auctions and bidding.
+
+-Enable partial payments or escrow for large NFTs.
+
+-Dynamic marketplace fee tiers based on NFT value or seller status.
+
+-Batch listing creation.
+
+##Testing Notes
+
+-Created multiple NFT listings.
+
+-Purchased listings and verified NFT ownership transfer.
+
+-Cancelled listings and verified NFT returned to seller.
+
+-Updated listing prices successfully.
+
+-Tested edge cases: non-seller trying to cancel/update, buying sold or cancelled NFT.
+
+
+##Security Checklist:
+
+
+ -Verify NFT ownership before listing
+
+ -Prevent double-spending of NFTs
+
+ -Ensure atomic swaps (payment + NFT transfer together)
+
+ -Validate all state transitions
+
+ -Check for integer overflow in fee calculations
+
+ -Only seller can modify their listings

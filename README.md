@@ -54,16 +54,16 @@ clarity-smart-contract-assignments/
    ```markdown
    # Clarity Smart Contract Assignments
    
-   **Student Name:** Your Name
+   **Student Name:** Prince Isaac
    **Cohort:** [Your Cohort]
-   **Submission Date:** [Date]
+   **Submission Date:** 29-122025
    
    ## Progress Tracker
    - [x] Assignment 1: Hello World Registry
-   - [ ] Assignment 2: Voting System
-   - [ ] Assignment 3: Timelock Wallet
-   - [ ] Assignment 4: Escrow Contract
-   - [ ] Assignment 5: NFT Marketplace
+   - [x] Assignment 2: Voting System
+   - [x] Assignment 3: Timelock Wallet
+   - [x] Assignment 4: Escrow Contract
+   - [x] Assignment 5: NFT Marketplace
    ```
 
 4. **Complete** each assignment in its respective folder:

@@ -1,4 +1,4 @@
-;; Simple Escrow Contract
+;; Simple Escrow Contract (Hiro Play 3.2 Compatible)
 ;; Two-party escrow where buyer deposits and can release to seller or refund
 
 ;; Data Variables
@@ -10,9 +10,8 @@
 (define-constant STATUS-REFUNDED u3)
 
 ;; Data Maps
-;; TODO: Define map for escrow details
-(define-map escrows 
-    uint 
+(define-map escrows
+    uint
     {
         buyer: principal,
         seller: principal,
@@ -29,78 +28,87 @@
 (define-constant ERR-TRANSFER-FAILED (err u403))
 (define-constant ERR-INVALID-AMOUNT (err u404))
 
-;; Private Functions
-
-;; Check if caller is the buyer of an escrow
-(define-private (is-buyer (escrow-id uint) (caller principal))
-    ;; TODO: Get escrow and check if caller matches buyer
-    false
-)
-
 ;; Public Functions
 
 ;; Create an escrow and deposit STX
-;; @param seller: the seller's principal
-;; @param amount: amount of STX to escrow
-;; @returns (ok escrow-id) on success
 (define-public (create-escrow (seller principal) (amount uint))
-    (let
-        (
-            (escrow-id (+ (var-get escrow-count) u1))
-        )
-        ;; TODO: Validate amount > 0
-        ;; TODO: Transfer STX from buyer to this contract
-        ;; TODO: Store escrow data with STATUS-PENDING
-        ;; TODO: Increment escrow-count
-        (var-set escrow-count escrow-id)
-        (ok escrow-id)
+  (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+  (let ((escrow-id (+ (var-get escrow-count) u1)))
+    (begin
+      ;; Store escrow details (assume user sends STX along with transaction)
+      (map-set escrows escrow-id
+        {
+          buyer: tx-sender,
+          seller: seller,
+          amount: amount,
+          status: STATUS-PENDING,
+          created-at: block-height
+        }
+      )
+      ;; Increment escrow count
+      (var-set escrow-count escrow-id)
+      (ok escrow-id)
     )
+  )
 )
 
 ;; Buyer releases funds to seller
-;; @param escrow-id: the escrow to release
-;; @returns (ok true) on success
 (define-public (release-funds (escrow-id uint))
-    (let
-        (
-            (escrow (unwrap! (map-get? escrows escrow-id) ERR-NOT-FOUND))
-        )
-        ;; TODO: Verify caller is buyer
-        ;; TODO: Verify status is pending
-        ;; TODO: Transfer STX from contract to seller
-        ;; TODO: Update escrow status to COMPLETED
-        (ok true)
+  (let ((escrow (unwrap! (map-get? escrows escrow-id) ERR-NOT-FOUND)))
+    (begin
+      (asserts! (= (get buyer escrow) tx-sender) ERR-NOT-BUYER)
+      (asserts! (= (get status escrow) STATUS-PENDING) ERR-NOT-PENDING)
+      ;; Transfer STX from contract to seller
+      (asserts! (stx-transfer? (get amount escrow) (get seller escrow)) ERR-TRANSFER-FAILED)
+      ;; Update status
+      (map-set escrows escrow-id
+        {
+          buyer: (get buyer escrow),
+          seller: (get seller escrow),
+          amount: (get amount escrow),
+          status: STATUS-COMPLETED,
+          created-at: (get created-at escrow)
+        }
+      )
+      (ok true)
     )
+  )
 )
 
-;; Buyer cancels and gets refund
-;; @param escrow-id: the escrow to refund
-;; @returns (ok true) on success
+;; Buyer refunds their own STX
 (define-public (refund (escrow-id uint))
-    (let
-        (
-            (escrow (unwrap! (map-get? escrows escrow-id) ERR-NOT-FOUND))
-        )
-        ;; TODO: Verify caller is buyer
-        ;; TODO: Verify status is pending
-        ;; TODO: Transfer STX from contract back to buyer
-        ;; TODO: Update escrow status to REFUNDED
-        (ok true)
+  (let ((escrow (unwrap! (map-get? escrows escrow-id) ERR-NOT-FOUND)))
+    (begin
+      (asserts! (= (get buyer escrow) tx-sender) ERR-NOT-BUYER)
+      (asserts! (= (get status escrow) STATUS-PENDING) ERR-NOT-PENDING)
+      ;; Transfer STX back to buyer
+      (asserts! (stx-transfer? (get amount escrow) (get buyer escrow)) ERR-TRANSFER-FAILED)
+      ;; Update status
+      (map-set escrows escrow-id
+        {
+          buyer: (get buyer escrow),
+          seller: (get seller escrow),
+          amount: (get amount escrow),
+          status: STATUS-REFUNDED,
+          created-at: (get created-at escrow)
+        }
+      )
+      (ok true)
     )
+  )
 )
 
 ;; Read-only Functions
 
 ;; Get escrow details
-;; @param escrow-id: the escrow to look up
-;; @returns escrow data or none
 (define-read-only (get-escrow (escrow-id uint))
-    ;; TODO: Return escrow data
-    none
+  (match (map-get? escrows escrow-id)
+    escrow (ok escrow)
+    ERR-NOT-FOUND
+  )
 )
 
 ;; Get total number of escrows created
-;; @returns count
 (define-read-only (get-escrow-count)
-    (var-get escrow-count)
+  (var-get escrow-count)
 )
