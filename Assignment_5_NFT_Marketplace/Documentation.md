@@ -19,7 +19,7 @@ This contract allows users to list, buy, and manage NFT sales in a decentralized
 ### Decision 1: Marketplace Fee Calculation
 - **What I chose:** Store fee in basis points and calculate dynamically on purchase.
 - **Why:** Makes it flexible and precise for fractional percentages.
-- **Tradeoff:** Requires division; must check for rounding errors.
+- **Tradeoff:** Requires division; must check for rounding errors.          
 
 ### Decision 2: NFT Escrow via Contract
 - **What I chose:** NFTs are transferred to the contract upon listing and returned or sent to buyer.
