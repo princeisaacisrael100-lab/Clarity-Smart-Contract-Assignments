@@ -46,8 +46,8 @@ clarity-smart-contract-assignments/
 1. **Fork** the starter repository provided by your instructor
 2. **Clone** your forked repository to your local machine:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/clarity-smart-contract-assignments.git
-   cd clarity-smart-contract-assignments
+   git clone https://github.com/Codewithshagbaor/Clarity-Smart-Contract-Assignments.git
+   https://github.com/princeisaacisrael100-lab/Clarity-Smart-Contract-Assignments.git
    ```
 
 3. **Update** the main README.md (This) with your information:
@@ -55,7 +55,7 @@ clarity-smart-contract-assignments/
    # Clarity Smart Contract Assignments
    
    **Student Name:** Prince Isaac
-   **Cohort:** [Your Cohort]
+   **Cohort:** 1
    **Submission Date:** 29-122025
    
    ## Progress Tracker
@@ -92,59 +92,95 @@ clarity-smart-contract-assignments/
 - Should include the following sections:
 
 ```markdown
-# Assignment [Number]: [Contract Name]
+# Assignment 1: Hello World Registry
 
 ## Student Information
-- Name: [Your Name]
-- Date: [Submission Date]
+- Name: Prince Isaac
+- Date: 29-12-2025
+
+---
 
 ## Contract Overview
-[Brief description of what your contract does]
+
+The Hello World Registry contract allows users to store, retrieve, update, and delete a personalized text message associated with their blockchain principal. Each principal can only manage their own message, ensuring ownership and data isolation. The contract demonstrates basic Clarity concepts such as maps, principals, public functions, read-only functions, and safe state mutation.
+
+---
 
 ## Assumptions Made
-- [List any assumptions about how the contract should work]
-- [Example: "Assumed that once a message is deleted, it cannot be recovered"]
-- [Example: "Assumed prices are always in micro-STX (1 STX = 1,000,000 micro-STX)"]
+
+- Each principal can store **only one message** at a time.
+- Messages are directly associated with `tx-sender`.
+- Updating a message fully replaces the previous message.
+- Once a message is deleted, it **cannot be recovered**.
+- There is no global message registry; all messages are user-specific.
+- Message content is assumed to be UTF-8 compatible text.
+
+---
 
 ## Design Decisions and Tradeoffs
 
-### Decision 1: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+### Decision 1: Use `tx-sender` as the message owner
+- **What I chose:** Messages are keyed by the sender’s principal.
+- **Why:** This guarantees ownership without requiring explicit authentication logic.
+- **Tradeoff:** Messages cannot be written or managed on behalf of another user.
 
-### Decision 2: [Title]
-- **What I chose:** [Describe your choice]
-- **Why:** [Explain reasoning]
-- **Tradeoff:** [What you gained vs what you gave up]
+---
 
-[Add more as needed]
+### Decision 2: Single message per user
+- **What I chose:** Each principal can store only one message.
+- **Why:** Keeps the contract simple and aligned with introductory learning goals.
+- **Tradeoff:** Users cannot store multiple messages or message history.
+
+---
+
+### Decision 3: Separate public and read-only functions
+- **What I chose:** Used read-only functions for fetching messages and public functions for mutations.
+- **Why:** Improves safety and clarity by separating state changes from queries.
+- **Tradeoff:** Slightly more functions compared to a minimal implementation.
+
+---
 
 ## How to Use This Contract
 
-### Function: function-name
-- **Purpose:** [What it does]
-- **Parameters:** 
-  - `param1`: [description]
-  - `param2`: [description]
-- **Returns:** [What it returns]
+### Function: set-message
+- **Purpose:** Stores or updates the caller’s message.
+- **Parameters:**
+  - `message` (string-utf8): The message to store
+- **Returns:** `(ok true)` on success
 - **Example:**
-  ```clarity
-  (contract-call? .contract-name function-name param1 param2)
-[Document all public functions]
+```clarity
+(contract-call? .hello-world-registry set-message "Hello, Clarity!")
 
 ## Known Limitations
-- [List any known issues or limitations]
-- [Example: "Does not handle the case where..."]
-- [Example: "Maximum message length is limited to 500 characters"]
+
+Does not support multiple messages per user.
+
+No message length enforcement beyond Clarity limits.
+
+Messages are not indexed or searchable globally.
+
+No event logging for message changes.
 
 ## Future Improvements
-- [Optional: List potential enhancements]
-- [Example: "Could add batch operations for efficiency"]
+
+Support multiple messages per user using IDs.
+
+Add maximum message length validation.
+
+Emit print events for create/update/delete actions.
+
+Allow read-only access to other users’ messages.
 
 ## Testing Notes
-- [Describe how you tested the contract]
-- [List key test cases you verified]
+Tested using Hiro Playground.
+
+Verified message creation, retrieval, update, and deletion.
+
+Confirmed that users cannot access or modify other users’ messages.
+
+Confirmed delete removes message permanently.
+
+Tested read-only functions for correctness without state mutation.
 ```
 
 ### Git Best Practices
