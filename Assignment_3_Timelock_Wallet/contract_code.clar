@@ -2,10 +2,7 @@
 ;; Deposit STX that can only be withdrawn after a specified block height
 
 ;; Data Maps
-;; TODO: Define map to track each user's locked balance
 (define-map balances principal uint)
-
-;; TODO: Define map to track each user's unlock block height
 (define-map unlock-heights principal uint)
 
 ;; Data Variable for total locked
@@ -27,14 +24,22 @@
 (define-public (deposit (amount uint) (lock-blocks uint))
     (let
         (
-            ;; TODO: Calculate unlock height (current block + lock-blocks)
-            (unlock-height (+ block-height lock-blocks))
+            (unlock-height (+ stacks-block-height lock-blocks))
+            (current-balance (default-to u0 (map-get? balances tx-sender)))
         )
-        ;; TODO: Validate amount > 0
-        ;; TODO: Transfer STX from tx-sender to this contract
-        ;; Hint: (stx-transfer? amount tx-sender (as-contract tx-sender))
-        ;; TODO: Update user's balance and unlock-height
-        ;; TODO: Update total-locked
+        ;; Validate amount > 0
+        (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+        
+        ;; Transfer STX from tx-sender to this contract
+        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        
+        ;; Update user's balance and unlock-height
+        (map-set balances tx-sender (+ current-balance amount))
+        (map-set unlock-heights tx-sender unlock-height)
+        
+        ;; Update total-locked
+        (var-set total-locked (+ (var-get total-locked) amount))
+        
         (ok true)
     )
 )
@@ -47,12 +52,22 @@
             (user-balance (default-to u0 (map-get? balances tx-sender)))
             (user-unlock-height (default-to u0 (map-get? unlock-heights tx-sender)))
         )
-        ;; TODO: Check that user has a balance
-        ;; TODO: Check that current block-height >= unlock-height
-        ;; TODO: Transfer STX from contract back to user
-        ;; Hint: (as-contract (stx-transfer? user-balance tx-sender sender))
-        ;; TODO: Clear user's balance and unlock-height
-        ;; TODO: Update total-locked
+        ;; Check that user has a balance
+        (asserts! (> user-balance u0) ERR-NO-BALANCE)
+        
+        ;; Check that current block-height >= unlock-height
+        (asserts! (>= stacks-block-height user-unlock-height) ERR-STILL-LOCKED)
+        
+        ;; Transfer STX from contract back to user
+        (try! (as-contract (stx-transfer? user-balance tx-sender contract-caller)))
+        
+        ;; Clear user's balance and unlock-height
+        (map-delete balances tx-sender)
+        (map-delete unlock-heights tx-sender)
+        
+        ;; Update total-locked
+        (var-set total-locked (- (var-get total-locked) user-balance))
+        
         (ok user-balance)
     )
 )
@@ -64,11 +79,20 @@
     (let
         (
             (current-unlock (default-to u0 (map-get? unlock-heights tx-sender)))
+            (user-balance (default-to u0 (map-get? balances tx-sender)))
         )
-        ;; TODO: Check that user has a balance
-        ;; TODO: Calculate new unlock height
-        ;; TODO: Update unlock-heights map
-        (ok current-unlock)
+        ;; Check that user has a balance
+        (asserts! (> user-balance u0) ERR-NO-BALANCE)
+        
+        ;; Calculate new unlock height
+        (let
+            (
+                (new-unlock (+ current-unlock additional-blocks))
+            )
+            ;; Update unlock-heights map
+            (map-set unlock-heights tx-sender new-unlock)
+            (ok new-unlock)
+        )
     )
 )
 
@@ -78,16 +102,14 @@
 ;; @param user: the principal to check
 ;; @returns balance amount
 (define-read-only (get-balance (user principal))
-    ;; TODO: Return user's balance from map
-    u0
+    (default-to u0 (map-get? balances user))
 )
 
 ;; Get unlock height for a user
 ;; @param user: the principal to check
 ;; @returns unlock block height
 (define-read-only (get-unlock-height (user principal))
-    ;; TODO: Return user's unlock height
-    u0
+    (default-to u0 (map-get? unlock-heights user))
 )
 
 ;; Get total STX locked in contract

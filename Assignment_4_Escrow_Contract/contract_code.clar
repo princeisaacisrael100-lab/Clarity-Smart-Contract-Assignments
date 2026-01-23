@@ -1,4 +1,4 @@
-;; Simple Escrow Contract (Hiro Play 3.2 Compatible)
+
 ;; Two-party escrow where buyer deposits and can release to seller or refund
 
 ;; Data Variables
@@ -32,22 +32,26 @@
 
 ;; Create an escrow and deposit STX
 (define-public (create-escrow (seller principal) (amount uint))
-  (asserts! (> amount u0) ERR-INVALID-AMOUNT)
-  (let ((escrow-id (+ (var-get escrow-count) u1)))
-    (begin
-      ;; Store escrow details (assume user sends STX along with transaction)
-      (map-set escrows escrow-id
-        {
-          buyer: tx-sender,
-          seller: seller,
-          amount: amount,
-          status: STATUS-PENDING,
-          created-at: block-height
-        }
+  (begin
+    (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+    (let ((escrow-id (+ (var-get escrow-count) u1)))
+      (begin
+        ;; Transfer STX from buyer to contract
+        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        ;; Store escrow details
+        (map-set escrows escrow-id
+          {
+            buyer: tx-sender,
+            seller: seller,
+            amount: amount,
+            status: STATUS-PENDING,
+            created-at: stacks-block-height
+          }
+        )
+        ;; Increment escrow count
+        (var-set escrow-count escrow-id)
+        (ok escrow-id)
       )
-      ;; Increment escrow count
-      (var-set escrow-count escrow-id)
-      (ok escrow-id)
     )
   )
 )
@@ -56,11 +60,11 @@
 (define-public (release-funds (escrow-id uint))
   (let ((escrow (unwrap! (map-get? escrows escrow-id) ERR-NOT-FOUND)))
     (begin
-      (asserts! (= (get buyer escrow) tx-sender) ERR-NOT-BUYER)
-      (asserts! (= (get status escrow) STATUS-PENDING) ERR-NOT-PENDING)
+      (asserts! (is-eq (get buyer escrow) tx-sender) ERR-NOT-BUYER)
+      (asserts! (is-eq (get status escrow) STATUS-PENDING) ERR-NOT-PENDING)
       ;; Transfer STX from contract to seller
-      (asserts! (stx-transfer? (get amount escrow) (get seller escrow)) ERR-TRANSFER-FAILED)
-      ;; Update status
+      (try! (as-contract (stx-transfer? (get amount escrow) tx-sender (get seller escrow))))
+      ;; Update status to completed
       (map-set escrows escrow-id
         {
           buyer: (get buyer escrow),
@@ -79,11 +83,11 @@
 (define-public (refund (escrow-id uint))
   (let ((escrow (unwrap! (map-get? escrows escrow-id) ERR-NOT-FOUND)))
     (begin
-      (asserts! (= (get buyer escrow) tx-sender) ERR-NOT-BUYER)
-      (asserts! (= (get status escrow) STATUS-PENDING) ERR-NOT-PENDING)
-      ;; Transfer STX back to buyer
-      (asserts! (stx-transfer? (get amount escrow) (get buyer escrow)) ERR-TRANSFER-FAILED)
-      ;; Update status
+      (asserts! (is-eq (get buyer escrow) tx-sender) ERR-NOT-BUYER)
+      (asserts! (is-eq (get status escrow) STATUS-PENDING) ERR-NOT-PENDING)
+      ;; Transfer STX from contract back to buyer
+      (try! (as-contract (stx-transfer? (get amount escrow) tx-sender (get buyer escrow))))
+      ;; Update status to refunded
       (map-set escrows escrow-id
         {
           buyer: (get buyer escrow),
@@ -102,13 +106,10 @@
 
 ;; Get escrow details
 (define-read-only (get-escrow (escrow-id uint))
-  (match (map-get? escrows escrow-id)
-    escrow (ok escrow)
-    ERR-NOT-FOUND
-  )
+  (ok (map-get? escrows escrow-id))
 )
 
 ;; Get total number of escrows created
 (define-read-only (get-escrow-count)
-  (var-get escrow-count)
+  (ok (var-get escrow-count))
 )
